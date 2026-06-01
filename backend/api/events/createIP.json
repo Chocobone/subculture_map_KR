@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "path": "/ips",
+  "headers": { "Content-Type": "application/json" },
+  "body": "{\"name\":\"원피스\",\"keywords\":[\"원피스\",\"OP\",\"One Piece\"]}",
+  "requestContext": { "resourcePath": "/ips", "httpMethod": "POST" },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "isBase64Encoded": false
+}
