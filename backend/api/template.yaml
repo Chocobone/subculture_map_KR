@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Subculture Tracker API — SAM Local 테스트용 템플릿
+
+# SAM 빌드 후 실행:
+#   sam build
+#   sam local start-api --env-vars env.json
+#
+# 단일 함수 호출:
+#   sam local invoke CreateIPFunction --event events/createIP.json --env-vars env.json
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [x86_64]   # SAM Local Windows 호환 (운영은 arm64)
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Resources:
+
+  # ── Events ──────────────────────────────────────────────
+  GetEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/events/getEvents.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /events
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/events/getEvents.ts
+        External:
+          - '@aws-sdk/*'
+
+  GetEventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/events/getEvent.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /events/{id}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/events/getEvent.ts
+        External:
+          - '@aws-sdk/*'
+
+  CreateEventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/events/createEvent.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /events
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/events/createEvent.ts
+        External:
+          - '@aws-sdk/*'
+
+  DeleteEventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/events/deleteEvent.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /events/{id}
+            Method: DELETE
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/events/deleteEvent.ts
+        External:
+          - '@aws-sdk/*'
+
+  # ── IPs ─────────────────────────────────────────────────
+  GetIPsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ips/getIPs.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ips
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/ips/getIPs.ts
+        External:
+          - '@aws-sdk/*'
+
+  CreateIPFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ips/createIP.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ips
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/ips/createIP.ts
+        External:
+          - '@aws-sdk/*'
+
+  DeleteIPFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ips/deleteIP.handler
+      CodeUri: .
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ips/{id}
+            Method: DELETE
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/handlers/ips/deleteIP.ts
+        External:
+          - '@aws-sdk/*'

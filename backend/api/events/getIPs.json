@@ -1,0 +1,10 @@
+{
+  "httpMethod": "GET",
+  "path": "/ips",
+  "headers": {},
+  "body": null,
+  "requestContext": { "resourcePath": "/ips", "httpMethod": "GET" },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "isBase64Encoded": false
+}
