@@ -6,6 +6,7 @@
 |------|-----------|
 | v1 | 최초 작성 |
 | v2 | events 테이블에 `place_url`, `place_lat`, `place_lng` 추가 + Naver Local Search API 연동 |
+| v3 | 각 Stage의 테스트 완료 기준을 Stage 6(통합 테스트 일괄 진행)으로 이동 — 구현·배포 흐름과 분리 |
 
 ## 개요
 
@@ -15,7 +16,7 @@
 | 마일스톤 | M100 |
 | 수행 계획서 | `plans/task_m100_2.md` |
 | 브랜치 | `local/task2` |
-| 단계 수 | 5단계 |
+| 단계 수 | 6단계 (Stage 6: 통합 테스트 일괄 진행) |
 
 ---
 
@@ -67,8 +68,8 @@ backend/api/
 - 인덱스: `events(ip_id)`, `events(status)`, `events(start_date, end_date)`
 
 **완료 기준**:
-- Docker PostgreSQL에 SQL 적용 후 테이블·인덱스 생성 확인
-- `\d events`로 `place_url`, `place_lat`, `place_lng` 컬럼 포함 확인
+- SQL 파일 작성 완료 및 문법 검증
+- ~~Docker PostgreSQL 적용 확인~~ → Stage 6에서 일괄 검증
 
 ---
 
@@ -168,8 +169,8 @@ SecretValue: { "clientId": "...", "clientSecret": "..." }
 ```
 
 **완료 기준**:
-- `npm run test` 통과 (naverMapsService mock 포함 단위 테스트)
-- TypeScript 타입 오류 0개
+- TypeScript 타입 오류 0개 (`tsc --noEmit`)
+- ~~`npm run test` 통과~~ → Stage 6에서 일괄 검증
 
 ---
 
@@ -217,8 +218,8 @@ environment: {
 ```
 
 **완료 기준**:
-- `npx cdk synth --context env=dev` 오류 없음
-- `npx cdk diff --context env=dev` 예상 리소스 목록 확인 (작업지시자 확인)
+- `npx cdk synth --context env=dev` 오류 없음 ✅
+- ~~`npx cdk diff` 작업지시자 확인~~ → Stage 5 배포 직전 확인
 
 ---
 
@@ -264,14 +265,14 @@ SAM Local에서는 실제 Naver API를 호출한다. 로컬 `env.json`에 테스
 | 6 | `DELETE /events/{id}` | 204 |
 
 **완료 기준**:
-- 6개 시나리오 모두 기댓값 일치
-- `place_lat`, `place_lng` 한국 좌표 범위 확인 (위도 33~38, 경도 124~132)
+- template.yaml 및 이벤트 JSON 파일 작성 완료
+- ~~6개 시나리오 실행~~ → Stage 6에서 일괄 검증
 
 ---
 
-### Stage 5 — dev 스택 배포 + 통합 테스트
+### Stage 5 — dev 스택 배포
 
-**목표**: AWS dev 환경 배포 후 Naver API 연동 포함 E2E 검증
+**목표**: AWS dev 환경에 DataStack + ApiStack 배포
 
 **배포 순서**:
 
@@ -279,7 +280,7 @@ SAM Local에서는 실제 Naver API를 호출한다. 로컬 `env.json`에 테스
 # 1. cdk diff 확인 (작업지시자 승인)
 cd infra && npx cdk diff --all --context env=dev
 
-# 2. DataStack 배포
+# 2. DataStack 배포 (Aurora, Redis, DynamoDB, Naver API Secret)
 npx cdk deploy SubcultureTracker-Data-dev --context env=dev
 
 # 3. Naver API 크리덴셜 Secrets Manager에 수동 입력
@@ -290,11 +291,65 @@ aws secretsmanager put-secret-value \
 # 4. Aurora 마이그레이션 적용
 # 001_initial_schema.sql → Aurora 실행
 
-# 5. ApiStack 배포
+# 5. ApiStack 배포 (API Gateway + Lambda 7개)
 npx cdk deploy SubcultureTracker-Api-dev --context env=dev
 ```
 
-**통합 테스트 항목**:
+**완료 기준**:
+- `cdk synth` 오류 없음 ✅ (이미 검증)
+- `cdk deploy` 완료 후 API Gateway URL 획득
+- CloudWatch Logs에 Lambda 기동 오류 없음
+- ~~통합 테스트~~ → Stage 6에서 일괄 검증
+
+---
+
+### Stage 6 — 통합 테스트 일괄 진행
+
+**목표**: Stage 1~5에서 각각 보류된 테스트를 일괄 수행하여 전체 기능 검증
+
+**테스트 구분**:
+
+#### 6-1. 단위 테스트 (로컬)
+
+```bash
+npm run test -ws
+```
+
+| 대상 | 항목 |
+|------|------|
+| `eventQueries.test.ts` | Aurora CRUD 쿼리 mock 검증 |
+| `naverMapsService.test.ts` | Naver Local Search API mock 검증 |
+
+#### 6-2. SAM Local 통합 테스트
+
+사전 준비:
+```bash
+# SAM CLI + Docker 설치 필요
+winget install Amazon.SAM-CLI
+# Docker Desktop 설치 후 실행
+
+# PostgreSQL + Redis 컨테이너 실행
+docker run -d --name pg-dev -e POSTGRES_PASSWORD=password -e POSTGRES_DB=subculture_tracker -p 5432:5432 postgres:15
+docker run -d --name redis-dev -p 6379:6379 redis:7
+docker exec -i pg-dev psql -U postgres -d subculture_tracker < backend/api/src/db/migrations/001_initial_schema.sql
+
+# env.json 준비 (Naver API 키 입력)
+cp backend/api/env.json.example backend/api/env.json
+```
+
+테스트 시나리오 (순서 준수):
+
+| # | 요청 | 기댓값 |
+|---|------|--------|
+| 1 | `POST /ips` `{"name":"원피스","keywords":["원피스","OP"]}` | 201, `id` 반환 |
+| 2 | `GET /ips` | 200, items에 원피스 포함 |
+| 3 | `POST /events` (place 있음) | 201, `placeUrl`·`placeLat`·`placeLng` 비어있지 않음 |
+| 4 | `POST /events` (place 없음) | 201, `placeUrl` null |
+| 5 | `GET /events?ipId=…` | 200, 두 행사 모두 포함 |
+| 6 | `GET /events/{id}` | 200, `placeUrl` 필드 포함 |
+| 7 | `DELETE /events/{id}` | 204 |
+
+#### 6-3. dev 환경 E2E 테스트 (Stage 5 배포 후)
 
 | 엔드포인트 | 확인 항목 |
 |-----------|-----------|
@@ -304,9 +359,10 @@ npx cdk deploy SubcultureTracker-Api-dev --context env=dev
 | Naver API 미발견 장소 | 세 필드 NULL, 201 정상 반환 |
 
 **완료 기준**:
-- 모든 통합 테스트 통과
-- CloudWatch Logs 에러 없음
 - `npm run test -ws` 전체 통과
+- SAM Local 7개 시나리오 모두 기댓값 일치
+- `place_lat`, `place_lng` 한국 좌표 범위 확인 (위도 33~38, 경도 124~132)
+- CloudWatch Logs 에러 없음
 
 ---
 
@@ -318,7 +374,8 @@ npx cdk deploy SubcultureTracker-Api-dev --context env=dev
 | 2 | 15 | `naverMapsService.ts` 추가, `eventService.create`에 API 연동 로직 추가 |
 | 3 | 8 | `data-stack.ts`에 Naver API Secret 추가, `api-stack.ts` Lambda 환경 변수 추가 |
 | 4 | 6 | SAM 테스트 이벤트에 place 있음/없음 시나리오 분리 |
-| 5 | 0 | 배포·테스트만 |
+| 5 | 0 | 배포만 (테스트 Stage 6으로 이동) |
+| 6 | 0 | 테스트 일괄 진행 |
 | **합계** | **32** | |
 
 ---
