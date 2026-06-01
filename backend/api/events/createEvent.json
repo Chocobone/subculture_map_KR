@@ -1,0 +1,11 @@
+{
+  "_comment": "ipId는 createIP 실행 후 반환된 id로 교체",
+  "httpMethod": "POST",
+  "path": "/events",
+  "headers": { "Content-Type": "application/json" },
+  "body": "{\"ipId\":\"REPLACE_WITH_IP_ID\",\"title\":\"원피스 팝업스토어\",\"type\":\"popup\",\"place\":\"홍대입구역\",\"startDate\":\"2026-07-01\",\"endDate\":\"2026-07-15\",\"summary\":\"원피스 25주년 기념 팝업\"}",
+  "requestContext": { "resourcePath": "/events", "httpMethod": "POST" },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "isBase64Encoded": false
+}
