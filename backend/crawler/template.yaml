@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Subculture Tracker — Crawler Worker (SAM Local Test)
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    Timeout: 120
+    MemorySize: 1024
+    Environment:
+      Variables:
+        DYNAMO_TABLE: !Ref CrawlerRawTable
+
+Resources:
+  # ── DynamoDB (로컬 테스트용) ──
+  CrawlerRawTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: crawler-raw-items-dev
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: urlHash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: urlHash
+          KeyType: HASH
+
+  # ── Lambda ──
+  CrawlerWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CrawlerWorkerFunction
+      Handler: dist/handler.handler
+      CodeUri: .
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CrawlerRawTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: es2022
+        EntryPoints:
+          - src/handler.ts
+        External:
+          - '@aws-sdk/*'
