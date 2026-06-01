@@ -19,6 +19,7 @@ export class DataStack extends Stack {
   readonly aurora:         DatabaseCluster;
   readonly naverApiSecret: Secret;
   readonly wsTable:        Table;
+  readonly rawTable:       Table;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
@@ -66,6 +67,14 @@ export class DataStack extends Stack {
     this.wsTable = new Table(this, 'WsConnections', {
       tableName:     `ws-connections-${envName}`,
       partitionKey:  { name: 'connectionId', type: AttributeType.STRING },
+      billingMode:   BillingMode.PAY_PER_REQUEST,
+      removalPolicy: retain,
+    });
+
+    // 크롤러 원본 저장 테이블 (urlHash 기반 중복 감지)
+    this.rawTable = new Table(this, 'CrawlerRawItems', {
+      tableName:     `crawler-raw-items-${envName}`,
+      partitionKey:  { name: 'urlHash', type: AttributeType.STRING },
       billingMode:   BillingMode.PAY_PER_REQUEST,
       removalPolicy: retain,
     });
