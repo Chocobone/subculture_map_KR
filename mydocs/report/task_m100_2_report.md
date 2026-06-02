@@ -8,7 +8,7 @@
 | 마일스톤 | M100 |
 | 브랜치 | `local/task2` |
 | 기간 | 2026-06-01 ~ 2026-06-02 |
-| 상태 | 구현 완료 / dev 배포 대기 |
+| 상태 | ✅ 완료 (2026-06-02 클로즈) |
 
 ## 구현 내용 요약
 
@@ -58,7 +58,8 @@ Tests: 9 passed, 9 total
 |---------|------|
 | POST /ips | ✅ 201 |
 | GET /ips | ✅ 200 |
-| POST /events (place 있음) | ✅ 201, placeUrl graceful null |
+| POST /events (place 있음, Naver 크리덴셜 없음) | ✅ 201, placeUrl graceful null |
+| POST /events (place 있음, Naver 크리덴셜 있음) | ✅ 201, placeLat=37.5577188, placeLng=126.9265991 |
 | POST /events (place 없음) | ✅ 201, placeUrl null |
 | GET /events?ipId=… | ✅ 200, total=2 |
 | GET /events/{id} | ✅ 200, placeUrl 필드 포함 |
@@ -70,21 +71,25 @@ Tests: 9 passed, 9 total
 npx cdk synth --context env=dev  → 오류 없음 ✅
 ```
 
-## 미완료 항목 (dev 배포 후 작업지시자 수행)
+## Naver API 실제 검증 결과 (2026-06-02)
 
-| 항목 | 비고 |
+| 항목 | 결과 |
 |------|------|
-| Naver API 좌표 실제 검증 | Naver Cloud Platform 크리덴셜 발급 후 |
-| `cdk deploy` DataStack + ApiStack | AWS 자격증명 설정 필요 |
-| Aurora 마이그레이션 | dev 스택 배포 후 적용 |
-| CloudWatch Logs 확인 | dev 배포 후 |
+| API 호출 성공 | ✅ |
+| 장소 쿼리 | 홍대입구역 |
+| `placeLat` | 37.5577188 ✅ (한국 범위 33~38 이내) |
+| `placeLng` | 126.9265991 ✅ (한국 범위 124~132 이내) |
+| `placeUrl` | `""` (Naver가 해당 장소 map 링크 미제공 — 정상 동작) |
+
+## 이관된 미완료 항목
+
+dev 배포 및 후속 개선 항목은 별도 문서로 이관:
+`mydocs/working/task_m100_2_pending.md`
 
 ## 트러블슈팅 기록
 
-- `troubleshootings/sam_local_env_injection.md` — SAM CLI `--env-vars` 환경변수 주입 실패 및 Docker 직접 실행 우회법
+- `mydocs/troubleshootings/sam_local_env_injection.md` — SAM CLI `--env-vars` 환경변수 주입 실패 및 Docker 직접 실행 우회법
 
-## 작업지시자 승인 요청
+## 클로즈 (2026-06-02)
 
-Issue #2 구현이 완료되었습니다. 위 결과를 검토하시고 승인해 주시면 Issue #2를 클로즈하고 Issue #4(Bedrock 분류기 구현)로 진행하겠습니다.
-
-dev 배포는 작업지시자께서 AWS 자격증명 설정 후 직접 수행하시거나, 별도 세션에서 진행 가능합니다.
+Naver API 실제 좌표 검증 완료. Issue #2 클로즈.
