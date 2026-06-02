@@ -1,0 +1,11 @@
+{
+  "_comment": "id는 삭제할 행사의 id로 교체",
+  "httpMethod": "DELETE",
+  "path": "/events/REPLACE_WITH_EVENT_ID",
+  "headers": {},
+  "body": null,
+  "requestContext": { "resourcePath": "/events/{id}", "httpMethod": "DELETE" },
+  "queryStringParameters": null,
+  "pathParameters": { "id": "REPLACE_WITH_EVENT_ID" },
+  "isBase64Encoded": false
+}

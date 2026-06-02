@@ -1,0 +1,11 @@
+{
+  "_comment": "id는 createEvent 실행 후 반환된 id로 교체",
+  "httpMethod": "GET",
+  "path": "/events/REPLACE_WITH_EVENT_ID",
+  "headers": {},
+  "body": null,
+  "requestContext": { "resourcePath": "/events/{id}", "httpMethod": "GET" },
+  "queryStringParameters": null,
+  "pathParameters": { "id": "REPLACE_WITH_EVENT_ID" },
+  "isBase64Encoded": false
+}

@@ -1,0 +1,11 @@
+{
+  "_comment": "ipId는 createIP 실행 후 반환된 id로 교체",
+  "httpMethod": "GET",
+  "path": "/events",
+  "headers": {},
+  "body": null,
+  "requestContext": { "resourcePath": "/events", "httpMethod": "GET" },
+  "queryStringParameters": { "ipId": "REPLACE_WITH_IP_ID", "page": "1", "limit": "20" },
+  "pathParameters": null,
+  "isBase64Encoded": false
+}
