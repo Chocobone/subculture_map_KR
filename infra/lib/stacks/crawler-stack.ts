@@ -5,7 +5,7 @@ import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { SqsQueue as SqsTarget } from 'aws-cdk-lib/aws-events-targets';
-import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { Port, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { AppLambda } from '../constructs/AppLambda';
 import { DataStack } from './data-stack';
 
@@ -19,7 +19,7 @@ export class CrawlerStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
-    const { network, rawTable } = dataStack;
+    const { network, rawTable, aurora, dbSecret, naverApiSecret } = dataStack;
 
     // Dead-Letter Queue (3회 실패 시 격리)
     const dlq = new Queue(this, 'CrawlerDLQ', {
@@ -51,7 +51,11 @@ export class CrawlerStack extends Stack {
       vpcSubnets:       { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups:   [network.lambdaSg],
       environment: {
-        DYNAMO_TABLE: rawTable.tableName,
+        DYNAMO_TABLE:     rawTable.tableName,
+        DB_SECRET_ARN:    dbSecret.secretArn,
+        DB_HOST:          aurora.clusterEndpoint.hostname,
+        DB_NAME:          'subculture_tracker',
+        NAVER_SECRET_ARN: naverApiSecret.secretArn,
       },
     });
 
@@ -64,6 +68,19 @@ export class CrawlerStack extends Stack {
 
     // DynamoDB 읽기/쓰기 권한
     rawTable.grantReadWriteData(crawlerFn);
+
+    // Aurora 크리덴셜 시크릿 읽기 권한
+    dbSecret.grantRead(crawlerFn);
+
+    // Naver API 크리덴셜 읽기 권한
+    naverApiSecret.grantRead(crawlerFn);
+
+    // Lambda → Aurora 5432 포트 허용
+    network.dbSg.addIngressRule(
+      network.lambdaSg,
+      Port.tcp(5432),
+      'Crawler Lambda → Aurora',
+    );
 
     // EventBridge 규칙 — 매 1시간마다 SQS에 메시지 발행 (IP × 소스 조합은 별도 관리)
     new Rule(this, 'CrawlSchedule', {
