@@ -4,3 +4,5 @@ cdk.out/
 .env.local
 env.json
 *.env
+frontend/fe_shots/
+frontend/fe_test.mjs

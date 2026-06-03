@@ -1,56 +1,99 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 
 export interface PlaceInfo {
-  placeUrl: string;
-  placeLat: number;  // WGS84 위도
-  placeLng: number;  // WGS84 경도
+  placeUrl: string | null;
+  placeLat: number;
+  placeLng: number;
 }
 
+// ── Naver Developers (Local Search API) ──────────────────────────────────────
 interface NaverLocalItem {
-  link:  string;
-  mapx:  string;  // 경도 × 1e7
-  mapy:  string;  // 위도  × 1e7
+  link: string;
+  mapx: string; // 경도 × 1e7
+  mapy: string; // 위도  × 1e7
 }
 
-let cachedCreds: { clientId: string; clientSecret: string } | null = null;
+// ── NCP Geocoding API ─────────────────────────────────────────────────────────
+interface NcpAddress {
+  roadAddress: string;
+  x: string; // 경도 (WGS84)
+  y: string; // 위도  (WGS84)
+}
 
-async function getCredentials(): Promise<{ clientId: string; clientSecret: string } | null> {
-  // 로컬/SAM: 환경 변수 직접 사용
+let cachedNaverCreds: { clientId: string; clientSecret: string } | null = null;
+let cachedNcpCreds:   { clientId: string; clientSecret: string } | null = null;
+
+async function getNaverCreds(): Promise<{ clientId: string; clientSecret: string } | null> {
   if (process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET) {
-    return {
-      clientId:     process.env.NAVER_CLIENT_ID,
-      clientSecret: process.env.NAVER_CLIENT_SECRET,
-    };
+    return { clientId: process.env.NAVER_CLIENT_ID, clientSecret: process.env.NAVER_CLIENT_SECRET };
   }
-
-  // AWS: Secrets Manager에서 로드 (Lambda 컨테이너 수명 동안 캐시)
   if (process.env.NAVER_SECRET_ARN) {
-    if (cachedCreds) return cachedCreds;
-    const sm = new SecretsManagerClient({ region: process.env.AWS_REGION });
-    const { SecretString } = await sm.send(
-      new GetSecretValueCommand({ SecretId: process.env.NAVER_SECRET_ARN }),
-    );
-    const secret = JSON.parse(SecretString!);
-    cachedCreds = { clientId: secret.clientId, clientSecret: secret.clientSecret };
-    return cachedCreds;
+    if (cachedNaverCreds) return cachedNaverCreds;
+    const sm = new SecretsManagerClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+    const { SecretString } = await sm.send(new GetSecretValueCommand({ SecretId: process.env.NAVER_SECRET_ARN }));
+    const s = JSON.parse(SecretString!);
+    cachedNaverCreds = { clientId: s.clientId, clientSecret: s.clientSecret };
+    return cachedNaverCreds;
   }
-
   return null;
 }
 
-export async function searchPlace(placeName: string): Promise<PlaceInfo | null> {
-  const creds = await getCredentials();
+async function getNcpCreds(): Promise<{ clientId: string; clientSecret: string } | null> {
+  if (process.env.NCP_CLIENT_ID && process.env.NCP_CLIENT_SECRET) {
+    return { clientId: process.env.NCP_CLIENT_ID, clientSecret: process.env.NCP_CLIENT_SECRET };
+  }
+  if (process.env.NCP_SECRET_ARN) {
+    if (cachedNcpCreds) return cachedNcpCreds;
+    const sm = new SecretsManagerClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+    const { SecretString } = await sm.send(new GetSecretValueCommand({ SecretId: process.env.NCP_SECRET_ARN }));
+    const s = JSON.parse(SecretString!);
+    cachedNcpCreds = { clientId: s.clientId, clientSecret: s.clientSecret };
+    return cachedNcpCreds;
+  }
+  return null;
+}
+
+// NCP Geocoding — 주소 문자열 → 좌표 (Local Search보다 정확)
+async function geocodeNcp(query: string): Promise<PlaceInfo | null> {
+  const creds = await getNcpCreds();
   if (!creds) return null;
 
-  const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(placeName)}&display=1`;
-
-  const res = await fetch(url, {
-    headers: {
-      'X-Naver-Client-Id':     creds.clientId,
-      'X-Naver-Client-Secret': creds.clientSecret,
+  const res = await fetch(
+    `https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(query)}`,
+    {
+      headers: {
+        'X-NCP-APIGW-API-KEY-ID': creds.clientId,
+        'X-NCP-APIGW-API-KEY':    creds.clientSecret,
+      },
     },
-  });
+  );
+  if (!res.ok) return null;
 
+  const data = await res.json() as { addresses: NcpAddress[] };
+  const addr = data.addresses?.[0];
+  if (!addr) return null;
+
+  return {
+    placeUrl: null,
+    placeLat: Number(addr.y),
+    placeLng: Number(addr.x),
+  };
+}
+
+// Naver Local Search — 장소명 → 좌표 + 네이버 지도 링크
+async function searchPlaceNaver(placeName: string): Promise<PlaceInfo | null> {
+  const creds = await getNaverCreds();
+  if (!creds) return null;
+
+  const res = await fetch(
+    `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(placeName)}&display=1`,
+    {
+      headers: {
+        'X-Naver-Client-Id':     creds.clientId,
+        'X-Naver-Client-Secret': creds.clientSecret,
+      },
+    },
+  );
   if (!res.ok) return null;
 
   const data = await res.json() as { items: NaverLocalItem[] };
@@ -58,8 +101,17 @@ export async function searchPlace(placeName: string): Promise<PlaceInfo | null> 
   if (!item) return null;
 
   return {
-    placeUrl: item.link,
+    placeUrl: item.link || null,
     placeLat: Number(item.mapy) / 1e7,
     placeLng: Number(item.mapx) / 1e7,
   };
+}
+
+/**
+ * 장소명 또는 주소로 좌표를 조회한다.
+ * 우선순위: NCP Geocoding → Naver Local Search
+ */
+export async function searchPlace(query: string): Promise<PlaceInfo | null> {
+  if (!query) return null;
+  return (await geocodeNcp(query)) ?? (await searchPlaceNaver(query));
 }
