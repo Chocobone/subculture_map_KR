@@ -8,9 +8,10 @@
     "lint":  "eslint src --ext .ts"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.3.0",
-    "@aws-sdk/client-dynamodb":      "^3.540.0",
-    "@aws-sdk/lib-dynamodb":         "^3.540.0",
+    "@aws-lambda-powertools/logger":    "^2.3.0",
+    "@aws-sdk/client-dynamodb":         "^3.540.0",
+    "@aws-sdk/client-secrets-manager":  "^3.540.0",
+    "@aws-sdk/lib-dynamodb":            "^3.540.0",
     "axios":   "^1.6.8",
     "cheerio": "^1.0.0-rc.12"
   },

@@ -1,6 +1,6 @@
 export type EventType   = 'popup' | 'collab' | 'goods' | 'limited';
 export type EventStatus = 'upcoming' | 'ongoing' | 'ended';
-export type CrawlSource = 'ruliweb' | 'fmkorea' | 'twitter' | 'naver-cafe' | 'dcinside';
+export type CrawlSource = 'ruliweb' | 'fmkorea' | 'twitter' | 'naver-cafe' | 'dcinside' | 'popga';
 
 export interface IP {
   id:        string;
