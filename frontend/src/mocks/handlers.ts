@@ -1,8 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import { mockEvents, mockIPs } from './data';
-import type { PaginatedResult } from '@shared/types';
+import type { IP, PaginatedResult } from '@shared/types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
+// mutable mock state — add/delete persist within a session
+let ips: IP[] = [...mockIPs];
 
 export const handlers = [
   http.get(`${BASE}/events`, ({ request }) => {
@@ -33,21 +36,23 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/ips`, () => {
-    return HttpResponse.json({ success: true, data: mockIPs });
+    return HttpResponse.json({ success: true, data: ips });
   }),
 
   http.post(`${BASE}/ips`, async ({ request }) => {
     const body = await request.json() as { name: string; keywords: string[] };
-    const newIP = {
+    const newIP: IP = {
       id:        `ip-${Date.now()}`,
       name:      body.name,
       keywords:  body.keywords,
       createdAt: new Date().toISOString(),
     };
+    ips = [...ips, newIP];
     return HttpResponse.json({ success: true, data: newIP }, { status: 201 });
   }),
 
-  http.delete(`${BASE}/ips/:id`, () => {
+  http.delete(`${BASE}/ips/:id`, ({ params }) => {
+    ips = ips.filter(ip => ip.id !== params.id);
     return HttpResponse.json({ success: true });
   }),
 ];
