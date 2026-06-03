@@ -1,10 +1,12 @@
 import type { CrawlSource } from '../../../../shared/types';
 import { BaseCrawler } from './BaseCrawler';
 import { RuliwwebCrawler } from './RuliwwebCrawler';
+import { PopgaCrawler } from './PopgaCrawler';
 
 export function crawlerFactory(source: CrawlSource): BaseCrawler {
   switch (source) {
-    case 'ruliweb':    return new RuliwwebCrawler();
+    case 'ruliweb': return new RuliwwebCrawler();
+    case 'popga':   return new PopgaCrawler();
     // 추후 이슈에서 순차 추가
     case 'fmkorea':
     case 'twitter':
