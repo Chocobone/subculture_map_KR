@@ -4,3 +4,4 @@ cdk.out/
 .env.local
 env.json
 *.env
+.env.example

@@ -17,13 +17,14 @@ export function AppRoutes() {
     <Suspense fallback={<Fallback />}>
       <Routes>
         <Route element={<AppShell />}>
-          <Route index element={<MapPage />} />
+          <Route path="map"  element={<MapPage />} />
           <Route path="list" element={<ListPage />} />
-          <Route path="new" element={<NewPage />} />
-          <Route path="my" element={<MyPage />} />
+          <Route path="new"  element={<NewPage />} />
+          <Route path="my"   element={<MyPage />} />
+          <Route index element={<Navigate to="/map" replace />} />
         </Route>
         <Route path="events/:id" element={<EventDetailPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/map" replace />} />
       </Routes>
     </Suspense>
   );
