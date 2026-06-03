@@ -6,18 +6,15 @@ export interface PlaceInfo {
   placeLng: number;
 }
 
-// ── Naver Developers (Local Search API) ──────────────────────────────────────
 interface NaverLocalItem {
   link: string;
-  mapx: string; // 경도 × 1e7
-  mapy: string; // 위도  × 1e7
+  mapx: string;
+  mapy: string;
 }
 
-// ── NCP Geocoding API ─────────────────────────────────────────────────────────
 interface NcpAddress {
-  roadAddress: string;
-  x: string; // 경도 (WGS84)
-  y: string; // 위도  (WGS84)
+  x: string;
+  y: string;
 }
 
 let cachedNaverCreds: { clientId: string; clientSecret: string } | null = null;
@@ -53,7 +50,6 @@ async function getNcpCreds(): Promise<{ clientId: string; clientSecret: string }
   return null;
 }
 
-// NCP Geocoding — 주소 문자열 → 좌표 (Local Search보다 정확)
 async function geocodeNcp(query: string): Promise<PlaceInfo | null> {
   const creds = await getNcpCreds();
   if (!creds) return null;
@@ -73,14 +69,9 @@ async function geocodeNcp(query: string): Promise<PlaceInfo | null> {
   const addr = data.addresses?.[0];
   if (!addr) return null;
 
-  return {
-    placeUrl: null,
-    placeLat: Number(addr.y),
-    placeLng: Number(addr.x),
-  };
+  return { placeUrl: null, placeLat: Number(addr.y), placeLng: Number(addr.x) };
 }
 
-// Naver Local Search — 장소명 → 좌표 + 네이버 지도 링크
 async function searchPlaceNaver(placeName: string): Promise<PlaceInfo | null> {
   const creds = await getNaverCreds();
   if (!creds) return null;
