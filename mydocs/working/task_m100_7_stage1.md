@@ -4,7 +4,7 @@
 |------|------|
 | 단계 | Stage 1 / 6 |
 | 완료일 | 2026-06-04 |
-| 상태 | 승인 대기 |
+| 상태 | ✅ 완료 |
 
 ---
 
@@ -51,21 +51,24 @@
 
 ## 검증
 
-CDK API 정합성을 설치된 `aws-cdk-lib` d.ts 기준으로 직접 확인:
+`cdk synth --all --context env=dev` 실행 결과 (Node.js v24.11.0):
+
+```
+Successfully synthesized to C:\Users\yooho\VSCODE\sub_culture\infra\cdk.out
+Supply a stack id (SubcultureTracker-Data-dev, SubcultureTracker-Api-dev,
+SubcultureTracker-Crawler-dev, SubcultureTracker-Cert-dev,
+SubcultureTracker-Frontend-dev) to display its template.
+```
 
 | 항목 | 결과 |
 |------|------|
-| `S3BucketOrigin.withOriginAccessControl` | ✅ `s3-bucket-origin.d.ts` 확인 |
-| `AllowedMethods`, `CachedMethods` | ✅ `distribution.d.ts` 확인 |
-| `CloudFrontTarget` | ✅ `aws-route53-targets` 확인 |
-| `crossRegionReferences` in StackProps | ✅ `stack.d.ts` 확인 |
-| `CertificateValidation.fromDns` | ✅ `aws-certificatemanager` 확인 |
-
-> `cdk synth` 실행은 Node.js PATH 미설정으로 로컬에서 불가.
-> **Stage 2 진입 전** 작업지시자 환경에서 아래 명령으로 검증 요청:
-> ```bash
-> cd infra && npx cdk synth --all --context env=dev 2>&1 | tail -20
-> ```
+| `S3BucketOrigin.withOriginAccessControl` | ✅ |
+| `AllowedMethods`, `CachedMethods`, `CachePolicy` | ✅ |
+| `CloudFrontTarget` (Route53 Alias) | ✅ |
+| `crossRegionReferences: true` | ✅ |
+| `CertificateValidation.fromDns` | ✅ |
+| Lambda 번들링 (Api + Crawler) | ✅ |
+| 5개 스택 전체 synth | ✅ |
 
 ---
 
