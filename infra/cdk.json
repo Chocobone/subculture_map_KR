@@ -10,11 +10,13 @@
     "@aws-cdk/aws-iam:minimizePolicies": true,
     "dev": {
       "auroraMinCapacity": 0.5,
-      "auroraMaxCapacity": 2
+      "auroraMaxCapacity": 2,
+      "domainName": "subculture.chocobone.dev"
     },
     "prod": {
       "auroraMinCapacity": 1,
-      "auroraMaxCapacity": 8
+      "auroraMaxCapacity": 8,
+      "domainName": "subculture.chocobone.dev"
     }
   }
 }
