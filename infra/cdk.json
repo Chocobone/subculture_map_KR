@@ -9,8 +9,8 @@
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/aws-iam:minimizePolicies": true,
     "dev": {
-      "auroraMinCapacity": 0.5,
-      "auroraMaxCapacity": 2,
+      "auroraMinCapacity": 0,
+      "auroraMaxCapacity": 1,
       "domainName": "subculture.chocobone.dev"
     },
     "prod": {
