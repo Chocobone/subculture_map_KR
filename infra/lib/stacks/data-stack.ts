@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import {
   DatabaseCluster, DatabaseClusterEngine,
   AuroraPostgresEngineVersion, ClusterInstance, Credentials,
+  CfnDBCluster,
 } from 'aws-cdk-lib/aws-rds';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -56,6 +57,10 @@ export class DataStack extends Stack {
       defaultDatabaseName:      'subculture_tracker',
       removalPolicy:            retain,
     });
+
+    // 무료 플랜 계정 — Aurora Serverless v2 Express 모드 활성화
+    (this.aurora.node.defaultChild as CfnDBCluster)
+      .addPropertyOverride('WithExpressConfiguration', true);
 
     // Naver API 크리덴셜 (배포 후 콘솔 또는 CLI로 수동 입력)
     this.naverApiSecret = new Secret(this, 'NaverApiSecret', {
