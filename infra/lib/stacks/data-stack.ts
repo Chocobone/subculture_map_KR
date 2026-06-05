@@ -8,7 +8,7 @@ import {
 } from 'aws-cdk-lib/aws-rds';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { SubnetType, NatProvider, InstanceType, InstanceClass, InstanceSize } from 'aws-cdk-lib/aws-ec2';
+import { SubnetType, NatInstanceProviderV2, InstanceType, InstanceClass, InstanceSize } from 'aws-cdk-lib/aws-ec2';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { VpcNetwork } from '../constructs/VpcNetwork';
 
@@ -33,11 +33,11 @@ export class DataStack extends Stack {
     const retain      = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
     const ctx         = this.node.tryGetContext(envName) ?? {};
 
-    // dev: EC2 t2.micro NAT Instance (12개월 무료), prod: 기본 NAT Gateway
+    // dev: EC2 t3.micro NAT Instance AL2023 (12개월 무료), prod: 기본 NAT Gateway
     const natGatewayProvider = isProd
       ? undefined
-      : NatProvider.instance({
-          instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+      : new NatInstanceProviderV2({
+          instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.MICRO),
         });
 
     this.network = new VpcNetwork(this, 'Network', { natGatewayProvider });

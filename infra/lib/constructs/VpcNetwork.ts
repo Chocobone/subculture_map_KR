@@ -5,7 +5,7 @@ import {
 } from 'aws-cdk-lib/aws-ec2';
 
 interface VpcNetworkProps {
-  // dev: NatProvider.instance(t2.micro), prod: undefined → 기본 NAT Gateway
+  // dev: new NatInstanceProviderV2(t3.micro AL2023), prod: undefined → 기본 NAT Gateway
   natGatewayProvider?: NatProvider;
 }
 
