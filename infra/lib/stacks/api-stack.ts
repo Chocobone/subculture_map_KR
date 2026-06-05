@@ -16,11 +16,11 @@ export class ApiStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
-    const { network, aurora, dbSecret, naverApiSecret } = dataStack;
+    const { network, dbEndpointHostname, dbSecret, naverSsmParam, ncpSsmParam } = dataStack;
 
     // 모든 Lambda에 공통으로 주입되는 환경 변수
     const commonEnv: Record<string, string> = {
-      DB_HOST:       aurora.clusterEndpoint.hostname,
+      DB_HOST:       dbEndpointHostname,
       DB_NAME:       'subculture_tracker',
       DB_SECRET_ARN: dbSecret.secretArn,
       // REDIS_URL은 Stage 5 ElastiCache 배포 후 추가
@@ -56,7 +56,11 @@ export class ApiStack extends Stack {
 
     const createEvent = new AppLambda(this, 'CreateEventFunction', {
       entry:       path.join(handlersDir, 'events/createEvent.ts'),
-      environment: { ...commonEnv, NAVER_SECRET_ARN: naverApiSecret.secretArn },
+      environment: {
+        ...commonEnv,
+        NAVER_PARAM_PATH: naverSsmParam.parameterName,
+        NCP_PARAM_PATH:   ncpSsmParam.parameterName,
+      },
       ...lambdaBase,
     });
 
@@ -88,7 +92,8 @@ export class ApiStack extends Stack {
     // ── IAM 권한 ──
     [getEvents, getEvent, createEvent, deleteEvent, getIPs, createIP, deleteIP]
       .forEach(fn => dbSecret.grantRead(fn));
-    naverApiSecret.grantRead(createEvent);
+    naverSsmParam.grantRead(createEvent);
+    ncpSsmParam.grantRead(createEvent);
 
     // ── REST API Gateway ──
     const api = new RestApi(this, 'RestApi', {
