@@ -15,6 +15,7 @@
 | 2 | `data-stack.ts` | prod DB: Aurora Serverless v2 → RDS db.t3.micro (50GB, 7일 백업) |
 | 3 | `api-stack.ts`, `crawler-stack.ts` | logRetention 환경별 분기 (dev ONE_WEEK / prod TWO_WEEKS) |
 | 4 | `aws_cost_estimate.md` | 최종 비용 추정 문서 업데이트 |
+| 5 | `mydocs/orders/20260605.md` | 배포 방법을 변경된 인프라(dev/prod 분리) 기준으로 재작성 |
 
 ---
 
@@ -212,6 +213,50 @@ const isProd = envName === 'prod';
 - prod 환경 비용 표 (목표: ~$44/월)
 - AWS Pricing Calculator 확인 안내
 - 비용 절감 항목 요약
+
+---
+
+## Stage 5 — orders/20260605.md: 배포 방법 재작성
+
+### 변경 목표
+
+`mydocs/orders/20260605.md`의 **AWS 배포 절차** 섹션을 #11 변경 후 아키텍처 기준으로 재작성한다.  
+dev와 prod 배포를 명확히 분리하고, 각 환경의 스택 구성·비용·주의사항을 반영한다.
+
+### 변경 내용
+
+기존 단일 절차(dev 기준) → **dev / prod 별도 절차**로 분리
+
+**dev 배포 절차 변경 사항**
+
+| 항목 | 변경 전 | 변경 후 |
+|------|---------|---------|
+| NAT Instance 타입 | t3.micro (무료 플랜) | t3.nano (비용 최적화) |
+| 스택 설명 | Free Tier 강조 | 비용 예산 기준 |
+| 비용 안내 | 미표기 | ~$29/월 명시 |
+
+**prod 배포 절차 신규 추가**
+
+```
+Step 0. 사전 준비 (최초 1회)
+Step 1. cdk diff --context env=prod
+Step 2. cdk deploy --all --context env=prod
+  - SubcultureTracker-Data-prod: VPC + NAT Instance(t3.micro) + RDS(db.t3.micro, 50GB) + SSM + DynamoDB
+  - SubcultureTracker-Api-prod: Lambda × 7 + API Gateway (logRetention 14일)
+  - SubcultureTracker-Crawler-prod: Lambda + SQS + EventBridge (logRetention 14일)
+  - SubcultureTracker-Cert-prod: ACM (us-east-1)
+  - SubcultureTracker-Frontend-prod: S3 + CloudFront
+Step 3. SSM 자격증명 입력 (/subculture-tracker/prod/naver-api, ncp-api)
+Step 4. 특정 스택 재배포
+Step 5. 리소스 삭제 주의사항 (prod는 RemovalPolicy.RETAIN — 수동 삭제 필요)
+```
+
+**비용 요약 표 업데이트**
+
+| 환경 | NAT | DB | 예상 비용 |
+|------|-----|----|-----------|
+| dev | t3.nano NAT Instance | RDS db.t3.micro 20GB | ~$29/월 |
+| prod | t3.micro NAT Instance | RDS db.t3.micro 50GB | ~$44/월 |
 
 ---
 
