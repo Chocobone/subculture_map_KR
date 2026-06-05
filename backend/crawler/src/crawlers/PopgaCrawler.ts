@@ -10,7 +10,8 @@ const REQUEST_DELAY  = 300; // ms — 서버 부하 방지
 const UA = 'Mozilla/5.0 (compatible; SubcultureBot/1.0)';
 
 // popga.co.kr 카테고리 중 서브컬처 관련 키워드
-const SUBCULTURE_CATEGORY_KEYWORDS = ['애니', '캐릭터', '게임'];
+// ('애니메이션'은 '애니' 부분일치로 커버, '웹툰'은 별도 추가)
+const SUBCULTURE_CATEGORY_KEYWORDS = ['애니', '캐릭터', '게임', '웹툰'];
 
 // ClassifiedEvent와 동일 구조 (순환 참조 방지를 위해 인라인 정의)
 interface StructuredEvent {

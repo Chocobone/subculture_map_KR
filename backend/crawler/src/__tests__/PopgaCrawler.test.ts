@@ -142,6 +142,8 @@ describe('PopgaCrawler', () => {
       ['애니/캐릭터', true],
       ['캐릭터', true],
       ['게임', true],
+      ['웹툰', true],
+      ['홍대,디어데인,네이버웹툰,웹툰 팝업', true],
       ['뷰티', false],
       ['패션', false],
       ['라이프스타일', false],
