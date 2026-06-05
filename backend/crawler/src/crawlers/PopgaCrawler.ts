@@ -188,8 +188,13 @@ export class PopgaCrawler extends BaseCrawler {
     const bodyText = $('body').text();
     const [startDate, endDate] = extractDates(bodyText);
 
-    // 카테고리: 배지/태그 요소에서 추출
-    const category = $('[class*="category"], [class*="tag"], [class*="badge"]').first().text().trim();
+    // 카테고리: 라이브 popga.co.kr은 category가 meta[keywords]에 위치한다.
+    // 우선순위: meta keywords → 배지/태그 클래스 요소 → og:title (DOM 변경 대비 다중 폴백)
+    const metaKeywords = $('meta[name="keywords"]').attr('content')?.trim() ?? '';
+    const classCategory = $('[class*="category"], [class*="tag"], [class*="badge"]').first().text().trim();
+    const ogTitle = $('meta[property="og:title"]').attr('content')?.trim() ?? '';
+    // isSubculture는 부분 문자열 포함 검사이므로 keywords 전체를 category로 사용한다.
+    const category = metaKeywords || classCategory || ogTitle;
 
     // 장소: "장소" 레이블 근처 텍스트
     const place = extractNear($, ['장소', '위치', '주소'], 2);
