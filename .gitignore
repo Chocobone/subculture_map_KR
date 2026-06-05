@@ -6,3 +6,7 @@ env.json
 *.env
 frontend/fe_shots/
 frontend/fe_test.mjs
+
+# PowerPoint (발표 자료 — git 추적 제외)
+*.pptx
+~$*.pptx
