@@ -54,7 +54,7 @@ export class DataStack extends Stack {
 
     const rds = new DatabaseInstance(this, 'RdsInstance', {
       engine:                 DatabaseInstanceEngine.postgres({
-                                version: PostgresEngineVersion.VER_15_4 }),
+                                version: PostgresEngineVersion.of('15.18', '15') }),
       instanceType:           InstanceType.of(InstanceClass.T3, InstanceSize.MICRO),
       credentials:            Credentials.fromSecret(this.dbSecret),
       vpc:                    this.network.vpc,
