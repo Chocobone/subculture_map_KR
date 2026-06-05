@@ -1,9 +1,10 @@
-import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {
   DatabaseCluster, DatabaseClusterEngine,
   AuroraPostgresEngineVersion, ClusterInstance, Credentials,
   CfnDBCluster,
+  DatabaseInstance, DatabaseInstanceEngine, PostgresEngineVersion,
 } from 'aws-cdk-lib/aws-rds';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -15,12 +16,12 @@ interface DataStackProps extends StackProps {
 }
 
 export class DataStack extends Stack {
-  readonly network:        VpcNetwork;
-  readonly dbSecret:       Secret;
-  readonly aurora:         DatabaseCluster;
-  readonly naverApiSecret: Secret;
-  readonly wsTable:        Table;
-  readonly rawTable:       Table;
+  readonly network:            VpcNetwork;
+  readonly dbSecret:           Secret;
+  readonly dbEndpointHostname: string;
+  readonly naverApiSecret:     Secret;
+  readonly wsTable:            Table;
+  readonly rawTable:           Table;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
@@ -49,25 +50,45 @@ export class DataStack extends Stack {
       },
     });
 
-    // Aurora PostgreSQL Serverless v2
-    this.aurora = new DatabaseCluster(this, 'Aurora', {
-      engine: DatabaseClusterEngine.auroraPostgres({
-        version: AuroraPostgresEngineVersion.VER_15_4,
-      }),
-      credentials:              Credentials.fromSecret(this.dbSecret),
-      writer:                   ClusterInstance.serverlessV2('writer'),
-      serverlessV2MinCapacity:  ctx.auroraMinCapacity ?? 0.5,
-      serverlessV2MaxCapacity:  ctx.auroraMaxCapacity ?? 2,
-      vpc:                      this.network.vpc,
-      vpcSubnets:               { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroups:           [this.network.dbSg],
-      defaultDatabaseName:      'subculture_tracker',
-      removalPolicy:            retain,
-    });
-
-    // 무료 플랜 계정 — Aurora Serverless v2 Express 모드 활성화
-    (this.aurora.node.defaultChild as CfnDBCluster)
-      .addPropertyOverride('WithExpressConfiguration', true);
+    if (isProd) {
+      // prod: Aurora PostgreSQL Serverless v2 (기존 사양 유지)
+      const aurora = new DatabaseCluster(this, 'Aurora', {
+        engine: DatabaseClusterEngine.auroraPostgres({
+          version: AuroraPostgresEngineVersion.VER_15_4,
+        }),
+        credentials:             Credentials.fromSecret(this.dbSecret),
+        writer:                  ClusterInstance.serverlessV2('writer'),
+        serverlessV2MinCapacity: ctx.auroraMinCapacity ?? 1,
+        serverlessV2MaxCapacity: ctx.auroraMaxCapacity ?? 8,
+        vpc:                     this.network.vpc,
+        vpcSubnets:              { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+        securityGroups:          [this.network.dbSg],
+        defaultDatabaseName:     'subculture_tracker',
+        removalPolicy:           retain,
+      });
+      (aurora.node.defaultChild as CfnDBCluster)
+        .addPropertyOverride('WithExpressConfiguration', true);
+      this.dbEndpointHostname = aurora.clusterEndpoint.hostname;
+    } else {
+      // dev: RDS PostgreSQL db.t3.micro (12개월 무료 플랜)
+      const rds = new DatabaseInstance(this, 'RdsInstance', {
+        engine:               DatabaseInstanceEngine.postgres({
+                                version: PostgresEngineVersion.VER_15_4 }),
+        instanceType:         InstanceType.of(InstanceClass.T3, InstanceSize.MICRO),
+        credentials:          Credentials.fromSecret(this.dbSecret),
+        vpc:                  this.network.vpc,
+        vpcSubnets:           { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+        securityGroups:       [this.network.dbSg],
+        databaseName:         'subculture_tracker',
+        removalPolicy:        retain,
+        multiAz:              false,
+        allocatedStorage:     20,
+        maxAllocatedStorage:  20,
+        backupRetention:      Duration.days(1),
+        deleteAutomatedBackups: true,
+      });
+      this.dbEndpointHostname = rds.instanceEndpoint.hostname;
+    }
 
     // Naver API 크리덴셜 (배포 후 콘솔 또는 CLI로 수동 입력)
     this.naverApiSecret = new Secret(this, 'NaverApiSecret', {
