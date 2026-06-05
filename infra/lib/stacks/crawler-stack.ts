@@ -19,7 +19,7 @@ export class CrawlerStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
-    const { network, rawTable, aurora, dbSecret, naverApiSecret } = dataStack;
+    const { network, rawTable, dbEndpointHostname, dbSecret, naverSsmParam, ncpSsmParam } = dataStack;
 
     // Dead-Letter Queue (3회 실패 시 격리)
     const dlq = new Queue(this, 'CrawlerDLQ', {
@@ -53,9 +53,10 @@ export class CrawlerStack extends Stack {
       environment: {
         DYNAMO_TABLE:     rawTable.tableName,
         DB_SECRET_ARN:    dbSecret.secretArn,
-        DB_HOST:          aurora.clusterEndpoint.hostname,
+        DB_HOST:          dbEndpointHostname,
         DB_NAME:          'subculture_tracker',
-        NAVER_SECRET_ARN: naverApiSecret.secretArn,
+        NAVER_PARAM_PATH: naverSsmParam.parameterName,
+        NCP_PARAM_PATH:   ncpSsmParam.parameterName,
       },
     });
 
@@ -72,8 +73,9 @@ export class CrawlerStack extends Stack {
     // Aurora 크리덴셜 시크릿 읽기 권한
     dbSecret.grantRead(crawlerFn);
 
-    // Naver API 크리덴셜 읽기 권한
-    naverApiSecret.grantRead(crawlerFn);
+    // Naver / NCP SSM 파라미터 읽기 권한
+    naverSsmParam.grantRead(crawlerFn);
+    ncpSsmParam.grantRead(crawlerFn);
 
     // Lambda → Aurora 5432 포트 허용
     network.dbSg.addIngressRule(
