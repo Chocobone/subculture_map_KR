@@ -3,6 +3,7 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { RestApi, LambdaIntegration, Cors } from 'aws-cdk-lib/aws-apigateway';
 import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { AppLambda } from '../constructs/AppLambda';
 import { DataStack } from './data-stack';
 
@@ -16,11 +17,12 @@ export class ApiStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
-    const { network, aurora, dbSecret, naverApiSecret } = dataStack;
+    const isProd = envName === 'prod';
+    const { network, dbEndpointHostname, dbSecret, naverSsmParam, ncpSsmParam } = dataStack;
 
     // 모든 Lambda에 공통으로 주입되는 환경 변수
     const commonEnv: Record<string, string> = {
-      DB_HOST:       aurora.clusterEndpoint.hostname,
+      DB_HOST:       dbEndpointHostname,
       DB_NAME:       'subculture_tracker',
       DB_SECRET_ARN: dbSecret.secretArn,
       // REDIS_URL은 Stage 5 ElastiCache 배포 후 추가
@@ -39,7 +41,12 @@ export class ApiStack extends Stack {
     // 모노레포에서 entry 파일이 infra/ 외부에 있으므로 projectRoot를 레포 루트로 설정
     const repoRoot    = path.join(__dirname, '../../..');
     const lockFile    = path.join(repoRoot, 'backend/api/package-lock.json');
-    const lambdaBase  = { ...vpcConfig, projectRoot: repoRoot, depsLockFilePath: lockFile };
+    const lambdaBase  = {
+      ...vpcConfig,
+      projectRoot:      repoRoot,
+      depsLockFilePath: lockFile,
+      logRetention:     isProd ? RetentionDays.TWO_WEEKS : RetentionDays.ONE_WEEK,
+    };
 
     // ── Events ──
     const getEvents = new AppLambda(this, 'GetEventsFunction', {
@@ -56,7 +63,11 @@ export class ApiStack extends Stack {
 
     const createEvent = new AppLambda(this, 'CreateEventFunction', {
       entry:       path.join(handlersDir, 'events/createEvent.ts'),
-      environment: { ...commonEnv, NAVER_SECRET_ARN: naverApiSecret.secretArn },
+      environment: {
+        ...commonEnv,
+        NAVER_PARAM_PATH: naverSsmParam.parameterName,
+        NCP_PARAM_PATH:   ncpSsmParam.parameterName,
+      },
       ...lambdaBase,
     });
 
@@ -88,7 +99,8 @@ export class ApiStack extends Stack {
     // ── IAM 권한 ──
     [getEvents, getEvent, createEvent, deleteEvent, getIPs, createIP, deleteIP]
       .forEach(fn => dbSecret.grantRead(fn));
-    naverApiSecret.grantRead(createEvent);
+    naverSsmParam.grantRead(createEvent);
+    ncpSsmParam.grantRead(createEvent);
 
     // ── REST API Gateway ──
     const api = new RestApi(this, 'RestApi', {

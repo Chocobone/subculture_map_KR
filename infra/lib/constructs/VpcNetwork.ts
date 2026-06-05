@@ -1,20 +1,26 @@
 import { Construct } from 'constructs';
 import {
   Vpc, SubnetType, SecurityGroup, Port,
-  IVpc, ISecurityGroup,
+  IVpc, ISecurityGroup, NatProvider,
 } from 'aws-cdk-lib/aws-ec2';
+
+interface VpcNetworkProps {
+  // dev: NatInstanceProviderV2 t3.nano (~$4/월), prod: NatInstanceProviderV2 t3.micro (~$10/월)
+  natGatewayProvider?: NatProvider;
+}
 
 export class VpcNetwork extends Construct {
   readonly vpc:      IVpc;
   readonly lambdaSg: ISecurityGroup;
   readonly dbSg:     ISecurityGroup;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: VpcNetworkProps = {}) {
     super(scope, id);
 
     this.vpc = new Vpc(this, 'Vpc', {
       maxAzs: 2,
       natGateways: 1,
+      natGatewayProvider: props.natGatewayProvider,
       subnetConfiguration: [
         { name: 'public',  subnetType: SubnetType.PUBLIC,                cidrMask: 24 },
         { name: 'private', subnetType: SubnetType.PRIVATE_WITH_EGRESS,   cidrMask: 24 },
