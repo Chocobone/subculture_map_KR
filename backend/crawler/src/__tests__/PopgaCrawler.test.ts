@@ -34,6 +34,18 @@ ${JSON.stringify({ props: { pageProps: { popup } } })}
 </body></html>
 `;
 
+// __NEXT_DATA__ 없이 meta keywords만 있는 실 구조 (라이브 popga.co.kr 형태)
+const SAMPLE_HTML_META = (opts: { title: string; keywords: string; dates: string; desc?: string }) => `
+<!DOCTYPE html><html><head>
+  <meta property="og:title" content="${opts.title} | 팝가">
+  <meta name="keywords" content="${opts.keywords}">
+  <meta name="description" content="${opts.desc ?? ''}">
+</head><body>
+  <h1>${opts.title}</h1>
+  <p>${opts.dates}</p>
+</body></html>
+`;
+
 function recentDate(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -96,6 +108,33 @@ describe('PopgaCrawler', () => {
     });
   });
 
+  // ── 2-b. 상세 페이지 파싱 — 실 구조 meta keywords (__NEXT_DATA__ 없음) ──────
+
+  describe('parseDetail via meta (no __NEXT_DATA__)', () => {
+    it('서브컬처: meta keywords의 캐릭터/애니메이션을 category로 추출한다', () => {
+      const html = SAMPLE_HTML_META({
+        title:    '귀멸의 칼날 스프링 페어',
+        keywords: '홍대,귀멸의칼날,animate 홍대점,홍대 팝업,애니메이션,굿즈,캐릭터',
+        dates:    '26. 04. 25 - 26. 09. 06',
+      });
+      const d = crawler.parseDetail(html);
+      expect(d).not.toBeNull();
+      expect(d!.title).toBe('귀멸의 칼날 스프링 페어');
+      expect(crawler.isSubculture(d!.category)).toBe(true);
+    });
+
+    it('비서브컬처: 뷰티 keywords는 isSubculture=false', () => {
+      const html = SAMPLE_HTML_META({
+        title:    '클리시어 팝업',
+        keywords: '여의도,클리시어,더현대 서울,뷰티,잼스토어',
+        dates:    '26. 06. 11 - 26. 06. 17',
+      });
+      const d = crawler.parseDetail(html);
+      expect(d).not.toBeNull();
+      expect(crawler.isSubculture(d!.category)).toBe(false);
+    });
+  });
+
   // ── 3. 카테고리 필터 ────────────────────────────────────────────────────────
 
   describe('isSubculture', () => {
@@ -103,6 +142,8 @@ describe('PopgaCrawler', () => {
       ['애니/캐릭터', true],
       ['캐릭터', true],
       ['게임', true],
+      ['웹툰', true],
+      ['홍대,디어데인,네이버웹툰,웹툰 팝업', true],
       ['뷰티', false],
       ['패션', false],
       ['라이프스타일', false],
