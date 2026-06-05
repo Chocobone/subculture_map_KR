@@ -1,4 +1,5 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 
 export interface PlaceInfo {
   placeUrl: string | null;
@@ -24,6 +25,16 @@ async function getNaverCreds(): Promise<{ clientId: string; clientSecret: string
   if (process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET) {
     return { clientId: process.env.NAVER_CLIENT_ID, clientSecret: process.env.NAVER_CLIENT_SECRET };
   }
+  if (process.env.NAVER_PARAM_PATH) {
+    if (cachedNaverCreds) return cachedNaverCreds;
+    const ssm = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+    const { Parameter } = await ssm.send(new GetParameterCommand({
+      Name: process.env.NAVER_PARAM_PATH, WithDecryption: true,
+    }));
+    const s = JSON.parse(Parameter!.Value!);
+    cachedNaverCreds = { clientId: s.clientId, clientSecret: s.clientSecret };
+    return cachedNaverCreds;
+  }
   if (process.env.NAVER_SECRET_ARN) {
     if (cachedNaverCreds) return cachedNaverCreds;
     const sm = new SecretsManagerClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
@@ -38,6 +49,16 @@ async function getNaverCreds(): Promise<{ clientId: string; clientSecret: string
 async function getNcpCreds(): Promise<{ clientId: string; clientSecret: string } | null> {
   if (process.env.NCP_CLIENT_ID && process.env.NCP_CLIENT_SECRET) {
     return { clientId: process.env.NCP_CLIENT_ID, clientSecret: process.env.NCP_CLIENT_SECRET };
+  }
+  if (process.env.NCP_PARAM_PATH) {
+    if (cachedNcpCreds) return cachedNcpCreds;
+    const ssm = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+    const { Parameter } = await ssm.send(new GetParameterCommand({
+      Name: process.env.NCP_PARAM_PATH, WithDecryption: true,
+    }));
+    const s = JSON.parse(Parameter!.Value!);
+    cachedNcpCreds = { clientId: s.clientId, clientSecret: s.clientSecret };
+    return cachedNcpCreds;
   }
   if (process.env.NCP_SECRET_ARN) {
     if (cachedNcpCreds) return cachedNcpCreds;
