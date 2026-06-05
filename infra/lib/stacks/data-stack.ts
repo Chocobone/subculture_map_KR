@@ -33,12 +33,12 @@ export class DataStack extends Stack {
     const retain      = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
     const ctx         = this.node.tryGetContext(envName) ?? {};
 
-    // dev: EC2 t3.micro NAT Instance AL2023 (12개월 무료), prod: 기본 NAT Gateway
-    const natGatewayProvider = isProd
-      ? undefined
-      : new NatInstanceProviderV2({
-          instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.MICRO),
-        });
+    // dev: t3.nano (~$4/월) / prod: t3.micro (~$10/월) — 양 환경 모두 NAT Instance (AL2023)
+    const natGatewayProvider = new NatInstanceProviderV2({
+      instanceType: isProd
+        ? InstanceType.of(InstanceClass.T3, InstanceSize.MICRO)
+        : InstanceType.of(InstanceClass.T3, InstanceSize.NANO),
+    });
 
     this.network = new VpcNetwork(this, 'Network', { natGatewayProvider });
 
