@@ -3,6 +3,7 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { RestApi, LambdaIntegration, Cors } from 'aws-cdk-lib/aws-apigateway';
 import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { AppLambda } from '../constructs/AppLambda';
 import { DataStack } from './data-stack';
 
@@ -16,6 +17,7 @@ export class ApiStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
+    const isProd = envName === 'prod';
     const { network, dbEndpointHostname, dbSecret, naverSsmParam, ncpSsmParam } = dataStack;
 
     // 모든 Lambda에 공통으로 주입되는 환경 변수
@@ -39,7 +41,12 @@ export class ApiStack extends Stack {
     // 모노레포에서 entry 파일이 infra/ 외부에 있으므로 projectRoot를 레포 루트로 설정
     const repoRoot    = path.join(__dirname, '../../..');
     const lockFile    = path.join(repoRoot, 'backend/api/package-lock.json');
-    const lambdaBase  = { ...vpcConfig, projectRoot: repoRoot, depsLockFilePath: lockFile };
+    const lambdaBase  = {
+      ...vpcConfig,
+      projectRoot:      repoRoot,
+      depsLockFilePath: lockFile,
+      logRetention:     isProd ? RetentionDays.TWO_WEEKS : RetentionDays.ONE_WEEK,
+    };
 
     // ── Events ──
     const getEvents = new AppLambda(this, 'GetEventsFunction', {

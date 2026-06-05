@@ -6,6 +6,7 @@ import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { SqsQueue as SqsTarget } from 'aws-cdk-lib/aws-events-targets';
 import { Port, SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { AppLambda } from '../constructs/AppLambda';
 import { DataStack } from './data-stack';
 
@@ -19,6 +20,7 @@ export class CrawlerStack extends Stack {
     super(scope, id, props);
 
     const { envName, dataStack } = props;
+    const isProd = envName === 'prod';
     const { network, rawTable, dbEndpointHostname, dbSecret, naverSsmParam, ncpSsmParam } = dataStack;
 
     // Dead-Letter Queue (3회 실패 시 격리)
@@ -47,6 +49,7 @@ export class CrawlerStack extends Stack {
       depsLockFilePath: lockFile,
       timeout:          Duration.seconds(120),
       memorySize:       1024,
+      logRetention:     isProd ? RetentionDays.TWO_WEEKS : RetentionDays.ONE_WEEK,
       vpc:              network.vpc,
       vpcSubnets:       { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups:   [network.lambdaSg],
