@@ -9,6 +9,7 @@ import {
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SubnetType, NatProvider, InstanceType, InstanceClass, InstanceSize } from 'aws-cdk-lib/aws-ec2';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { VpcNetwork } from '../constructs/VpcNetwork';
 
 interface DataStackProps extends StackProps {
@@ -19,7 +20,8 @@ export class DataStack extends Stack {
   readonly network:            VpcNetwork;
   readonly dbSecret:           Secret;
   readonly dbEndpointHostname: string;
-  readonly naverApiSecret:     Secret;
+  readonly naverSsmParam:      StringParameter;
+  readonly ncpSsmParam:        StringParameter;
   readonly wsTable:            Table;
   readonly rawTable:           Table;
 
@@ -90,10 +92,20 @@ export class DataStack extends Stack {
       this.dbEndpointHostname = rds.instanceEndpoint.hostname;
     }
 
-    // Naver API 크리덴셜 (배포 후 콘솔 또는 CLI로 수동 입력)
-    this.naverApiSecret = new Secret(this, 'NaverApiSecret', {
-      secretName:  `subculture-tracker/naver-api-${envName}`,
-      description: 'Naver Cloud Platform Local Search API credentials (clientId, clientSecret)',
+    // Naver 자격증명 — SSM Parameter Store (무료 플랜)
+    // 배포 후 아래 CLI로 실제 값 입력:
+    //   aws ssm put-parameter --name "/subculture-tracker/{env}/naver-api" \
+    //     --type SecureString --value '{"clientId":"...","clientSecret":"..."}' --overwrite
+    this.naverSsmParam = new StringParameter(this, 'NaverApiParam', {
+      parameterName: `/subculture-tracker/${envName}/naver-api`,
+      stringValue:   'PLACEHOLDER',
+      description:   'Naver Developers Local Search API 자격증명 JSON {clientId, clientSecret}',
+    });
+
+    this.ncpSsmParam = new StringParameter(this, 'NcpApiParam', {
+      parameterName: `/subculture-tracker/${envName}/ncp-api`,
+      stringValue:   'PLACEHOLDER',
+      description:   'Naver Cloud Platform Geocoding API 자격증명 JSON {clientId, clientSecret}',
     });
 
     // WebSocket 연결 관리 테이블
