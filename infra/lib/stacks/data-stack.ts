@@ -7,7 +7,7 @@ import {
 } from 'aws-cdk-lib/aws-rds';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { SubnetType, NatProvider, InstanceType, InstanceClass, InstanceSize } from 'aws-cdk-lib/aws-ec2';
 import { VpcNetwork } from '../constructs/VpcNetwork';
 
 interface DataStackProps extends StackProps {
@@ -30,7 +30,14 @@ export class DataStack extends Stack {
     const retain      = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
     const ctx         = this.node.tryGetContext(envName) ?? {};
 
-    this.network = new VpcNetwork(this, 'Network');
+    // dev: EC2 t2.micro NAT Instance (12개월 무료), prod: 기본 NAT Gateway
+    const natGatewayProvider = isProd
+      ? undefined
+      : NatProvider.instance({
+          instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+        });
+
+    this.network = new VpcNetwork(this, 'Network', { natGatewayProvider });
 
     // Aurora 크리덴셜 시크릿 (자동 생성)
     this.dbSecret = new Secret(this, 'DbSecret', {
